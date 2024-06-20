@@ -1,0 +1,73 @@
+#Importando a biblioteca pyspark
+import pyspark
+
+#Com essa função permite que você possa trabalhar com colunas.
+from pyspark.sql.functions import col
+
+#Permite trabalhar com vários tipos de dados
+from pyspark.sql.types import IntegerType, FloatType
+
+#Aqui carregamos um conjunto de dataset para usarmos, o databricks tem vários datasets disponibilizados, para maiores informações:
+#https://docs.databricks.com/en/discover/databricks-datasets.html
+# Aqui conseguimos ver o que cada parte dos comandos faz:
+#https://docs.databricks.com/en/dev-tools/databricks-utils.html
+#display: Mostra os dados
+#dbutils -> This module provides various utilities for users to interact with the rest of Databricks.
+#fs: DbfsUtils -> Manipulates the Databricks filesystem (DBFS) from the console
+#ls: ls(dir: String): Seq -> Lists the contents of a directory
+display(dbutils.fs.ls("/databricks-datasets/samples/"))
+
+
+# Aqui carregamos o dataset da linha 7 "Polulation vs Price" e ao mesmo tempo definimos o "df" como nosso conjunto de dados.
+df = spark.read.csv("/databricks-datasets/samples/population-vs-price/data_geo.csv", header=True)
+
+#Aqui vemos propriamente os dados.
+df.show(5)
+
+#Vendo todas as colunas
+df.columns
+
+#Criando um outro dataframe com o nome de df2 para não mexer no original.
+df2 = spark.read.csv("/databricks-datasets/samples/population-vs-price/data_geo.csv", header=True)
+
+#.show (5): Obviamente mostra as 5 primeiras linhas.
+#withColumnRenamed: Renomeia as colunas:
+#Renomeando geral:
+#df2 = df.withColumnRenamed('2014 rank', '2014_rank').show(5)
+df2 = df \
+  .withColumnRenamed('2014 rank', '2014_rank') \
+  .withColumnRenamed('State Code', 'state_code') \
+  .withColumnRenamed('2014 Population estimate', '2014_pop_estimate') \
+  .withColumnRenamed('2015 median sales price', '2015_median_sales_price')
+df2.show(5)
+
+#Vendo o tipo dos dados atuais.
+df2.printSchema()
+
+#Mudando o tipo dos dados.
+#Esse comando funciona do jeito que é, se aponta a coluna que você quer mudar 2x (col(...))
+df3 = df2.withColumn('2014_rank',col('2014_rank').cast(IntegerType()))\
+ .withColumn('2014_pop_estimate', col('2014_pop_estimate').cast(IntegerType()))\
+ .withColumn('2015_median_sales_price', col('2015_median_sales_price').cast(FloatType()))
+
+
+df3.printSchema()
+
+
+#Renomeando (ou criando) o dataframe "df_teste_sql".
+df3.createOrReplaceTempView('df_teste')
+
+
+#SELECT * FROM df_teste : Vamos acessar dentro do dataframe
+#WHERE 2014_rank: Coluna 2014_rank
+# <= 10: Menor ou igual a 10
+# SORT BY 2014_rank: Ordenados com base na coluna 2014_rank
+# ASC: Ordem Crescente
+
+# spark.sql: essa função me permite usar o sql e manipular os dados.
+top_10_results = spark.sql("""SELECT * FROM df_teste_sql 
+                              WHERE 2014_rank <= 10 
+                              SORT BY 2014_rank ASC""")
+
+top_10_results.show(5)
+
